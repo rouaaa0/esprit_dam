@@ -7,6 +7,8 @@ import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { InternshipOfferModule } from './internship-offer/internship-offer.module';
+import { ApplicationModule } from './application/application.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { ClubsModule } from './clubs/clubs.module';
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    InternshipOfferModule,
+    ApplicationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
