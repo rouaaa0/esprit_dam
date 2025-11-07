@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+
 // 🧩 Feature Modules
 import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { AuthModule } from './auth/auth.module';
@@ -12,6 +13,7 @@ import { ClubsModule } from './clubs/clubs.module';
 
 // 🛠️ Middleware
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -30,6 +32,7 @@ import { LoggerMiddleware } from './common/middlewear/logger.middleware';
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

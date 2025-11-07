@@ -2,38 +2,47 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { jwtConstants } from './constants';
 import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ClubsModule } from 'src/clubs/clubs.module';
 
 @Module({
   imports: [
-    // ✅ Passport for authentication strategy
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-
-    // ✅ JWT module configured dynamically from .env
-    JwtModule.register({
-      global: true,
-      secret: jwtConstants.secret, // from .env → JWT_SECRET
-      signOptions: {
-        expiresIn: jwtConstants.expiresIn as any, // 👈 FIX: cast as `StringValue`
-      },
+    ConfigModule.forRoot({
+      isGlobal: true, // ✅ allows env vars globally
     }),
 
-    // ✅ Mongoose Schemas
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+
+    // ✅ Dynamic JWT config via ConfigService
+    JwtModule.registerAsync({
+      global: true,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET', jwtConstants.secret),
+        signOptions: {
+          // ✅ Fix: allow string duration safely
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '24h') as any,
+        },
+      }),
+    }),
+
+    // ✅ Mongoose models
     MongooseModule.forFeature([
       { name: Utilisateur.name, schema: UtilisateurSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
     ]),
+
+    ClubsModule, // ✅ ensures RolesGuard & Auth share ClubsService
   ],
 
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-
-  // ✅ Exported for use in other modules
   exports: [AuthService, PassportModule, JwtModule],
 })
 export class AuthModule {}
