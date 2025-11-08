@@ -10,24 +10,18 @@ import {
 import { Role } from '../enums/role.enum';
 
 export class SignupDto {
-  @ApiProperty({
-    example: 'ST12345',
-    description: "Identifiant de connexion de l'utilisateur (ce qu'il utilisera pour se connecter)",
-  })
-  @IsString()
-  identifiant: string;
 
   @ApiProperty({
-    example: '4SIM4',
-    description: "Matricule / ID étudiant (optionnel, pas pour les parents)",
+    example: 'ST12345',
+    description: 'Identifiant de connexion (ce que l’app Android va utiliser)',
     required: false,
   })
   @IsOptional()
   @IsString()
-  studentId?: string;
+  identifiant?: string;
 
   @ApiProperty({
-    description: "Nom complet de l’utilisateur",
+    description: 'Nom complet de l’utilisateur',
     example: 'Mohamed Amine Sassi',
   })
   @IsString()
@@ -35,7 +29,7 @@ export class SignupDto {
   name: string;
 
   @ApiProperty({
-    description: "Adresse email de l’utilisateur",
+    description: 'Adresse email de l’utilisateur',
     example: 'amine.sassi@esprit.tn',
   })
   @IsEmail()
@@ -49,12 +43,22 @@ export class SignupDto {
   @MinLength(6)
   password: string;
 
+  // 👇👇 add this
   @ApiProperty({
-    description: 'Rôle de l’utilisateur (admin, president, teacher, student, parent)',
-    example: 'parent',
-    enum: Role,
-    default: Role.User,
+    description: 'Classe / groupe (ex: 4SIM4)',
+    example: '4SIM4',
     required: false,
+  })
+  @IsOptional()
+  @IsString()
+  classGroup?: string;
+
+  @ApiProperty({
+    description: 'Rôle de l’utilisateur (admin, student, parent, teacher...)',
+    example: 'student',
+    enum: Role,
+    required: false,
+    default: Role.User,
   })
   @IsOptional()
   @IsEnum(Role)

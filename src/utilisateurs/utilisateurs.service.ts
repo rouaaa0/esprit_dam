@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Utilisateur, UtilisateurDocument } from './schemas/utilisateur.schema';
 import { CreateUtilisateurDto } from './dto/create-utilisateur.dto';
 import { UpdateUtilisateurDto } from './dto/update-utilisateur.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UtilisateursService {
@@ -30,7 +31,7 @@ export class UtilisateursService {
     return utilisateur;
   }
 
-  // ✅ UPDATE
+  // ✅ UPDATE (admin / back-office)
   async update(id: string, updateUtilisateurDto: UpdateUtilisateurDto): Promise<Utilisateur> {
     const utilisateur = await this.utilisateurModel
       .findByIdAndUpdate(id, updateUtilisateurDto, { new: true })
@@ -44,5 +45,26 @@ export class UtilisateursService {
     const result = await this.utilisateurModel.findByIdAndDelete(id).exec();
     if (!result) throw new NotFoundException(`Utilisateur avec id ${id} introuvable`);
     return { message: 'Utilisateur supprimé avec succès' };
+  }
+
+  // ✅ CHANGE PASSWORD (for connected user)
+  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+    const user = await this.utilisateurModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    // vérifier l'ancien mot de passe
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) {
+      throw new UnauthorizedException('Ancien mot de passe incorrect');
+    }
+
+    // hasher et sauvegarder
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    return { message: 'Mot de passe modifié avec succès' };
   }
 }
