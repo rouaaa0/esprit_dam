@@ -30,7 +30,7 @@ export class AuthService {
   ) {}
 
   // ----------------------------
-  // 📝 SIGNUP - Inscription
+  // 📝 SIGNUP
   // ----------------------------
   async signUp(signupData: SignupDto) {
     const {
@@ -39,16 +39,16 @@ export class AuthService {
       name,
       role,
       identifiant,
-      classGroup, // 👈 ajouté
+      classGroup,
     } = signupData;
 
-    // vérifier email
+    // email unique
     const emailInUse = await this.utilisateurModel.findOne({ email });
     if (emailInUse) {
       throw new BadRequestException('Email déjà utilisé');
     }
 
-    // vérifier identifiant
+    // identifiant unique (si fourni)
     if (identifiant) {
       const identifiantInUse = await this.utilisateurModel.findOne({
         identifiant,
@@ -62,12 +62,12 @@ export class AuthService {
 
     const newUser = await this.utilisateurModel.create({
       identifiant,
-      firstName: name,
+      firstName: name,         // on stocke quand même
       lastName: '',
       email,
       password: hashedPassword,
       age: 0,
-      classGroup: classGroup ?? null, // 👈 on le stocke
+      classGroup: classGroup ?? null,
       role: role ?? Role.User,
     });
 
@@ -75,12 +75,11 @@ export class AuthService {
   }
 
   // ----------------------------
-  // 🔐 LOGIN - Authentification
+  // 🔐 LOGIN
   // ----------------------------
   async login(credentials: LoginDto) {
     const { identifiant, password } = credentials;
 
-    // chercher par identifiant OU email OU matricule
     const utilisateur = await this.utilisateurModel.findOne({
       $or: [
         { identifiant },
@@ -103,23 +102,30 @@ export class AuthService {
     ).toString();
 
     const tokens = await this.generateUserTokens(userId, utilisateur.role);
+
+    // 👇 on construit un user "clean" pour Android
+    const fullName =
+      (utilisateur.firstName ?? '').trim().length > 0 ||
+      (utilisateur.lastName ?? '').trim().length > 0
+        ? `${utilisateur.firstName ?? ''} ${utilisateur.lastName ?? ''}`.trim()
+        : utilisateur.email; // fallback
+
     return {
       ...tokens,
       user: {
         id: userId,
-        firstName: utilisateur.firstName,
-        lastName: utilisateur.lastName,
+        name: fullName,                     // 👈 Android va lire ça
         email: utilisateur.email,
         role: utilisateur.role,
-        studentId: utilisateur.studentId,
         classGroup: utilisateur.classGroup ?? null,
+        studentId: utilisateur.studentId ?? null,
       },
       message: 'Connexion réussie',
     };
   }
 
   // ----------------------------
-  // 🆕 /auth/me
+  // 🔎 ME (si tu l’utilises)
   // ----------------------------
   async me(userId: string) {
     const user = await this.utilisateurModel.findById(userId).lean();
@@ -127,19 +133,24 @@ export class AuthService {
       throw new UnauthorizedException('Utilisateur introuvable');
     }
 
+    const fullName =
+      (user.firstName ?? '').trim().length > 0 ||
+      (user.lastName ?? '').trim().length > 0
+        ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+        : user.email;
+
     return {
       id: user._id.toString(),
-      firstName: user.firstName,
-      lastName: user.lastName,
+      name: fullName,                   // 👈 même format
       email: user.email,
       role: user.role,
-      studentId: user.studentId,
       classGroup: user.classGroup ?? null,
+      studentId: user.studentId ?? null,
     };
   }
 
   // ----------------------------
-  // 🎟️ GÉNÉRATION DES TOKENS JWT
+  // JWT
   // ----------------------------
   async generateUserTokens(userId: string, role: Role) {
     const accessToken = this.jwtService.sign({ userId, role }, { expiresIn: '10h' });

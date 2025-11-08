@@ -10,10 +10,9 @@ import {
 import { Role } from '../enums/role.enum';
 
 export class SignupDto {
-
   @ApiProperty({
     example: 'ST12345',
-    description: 'Identifiant de connexion (ce que l’app Android va utiliser)',
+    description: "Identifiant de connexion (ce que l’app Android va utiliser)",
     required: false,
   })
   @IsOptional()
@@ -21,16 +20,16 @@ export class SignupDto {
   identifiant?: string;
 
   @ApiProperty({
-    description: 'Nom complet de l’utilisateur',
-    example: 'Mohamed Amine Sassi',
+    description: "Nom complet de l’utilisateur",
+    example: 'Oussem Abderrahim',
   })
   @IsString()
   @IsNotEmpty()
   name: string;
 
   @ApiProperty({
-    description: 'Adresse email de l’utilisateur',
-    example: 'amine.sassi@esprit.tn',
+    description: "Adresse email de l’utilisateur",
+    example: 'oussem@esprit.tn',
   })
   @IsEmail()
   email: string;
@@ -43,7 +42,6 @@ export class SignupDto {
   @MinLength(6)
   password: string;
 
-  // 👇👇 add this
   @ApiProperty({
     description: 'Classe / groupe (ex: 4SIM4)',
     example: '4SIM4',
@@ -54,7 +52,7 @@ export class SignupDto {
   classGroup?: string;
 
   @ApiProperty({
-    description: 'Rôle de l’utilisateur (admin, student, parent, teacher...)',
+    description: 'Rôle de l’utilisateur',
     example: 'student',
     enum: Role,
     required: false,
