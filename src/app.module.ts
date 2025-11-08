@@ -4,23 +4,23 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-
 // 🧩 Feature Modules
 import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
-
+import { InternshipOfferModule } from './internship-offer/internship-offer.module';
+import { ApplicationModule } from './application/application.module';
+import { EventsModule } from './events/events.module';
 
 // 🛠️ Middleware
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
-import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
     // 🌍 Load environment variables globally
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env', // ✅ Explicitly specify .env file (good practice)
+      envFilePath: '.env',
     }),
 
     // 💾 MongoDB connection (with safe fallback)
@@ -33,13 +33,14 @@ import { EventsModule } from './events/events.module';
     AuthModule,
     ClubsModule,
     EventsModule,
+    InternshipOfferModule,
+    ApplicationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // 🧾 Apply logger middleware to all routes
     consumer.apply(LoggerMiddleware).forRoutes('*');
   }
 }
