@@ -33,7 +33,14 @@ export class AuthService {
   // 📝 SIGNUP - Inscription
   // ----------------------------
   async signUp(signupData: SignupDto) {
-    const { email, password, name, role, studentId, identifiant } = signupData;
+    const {
+      email,
+      password,
+      name,
+      role,
+      identifiant,
+      classGroup, // 👈 ajouté
+    } = signupData;
 
     // vérifier email
     const emailInUse = await this.utilisateurModel.findOne({ email });
@@ -41,10 +48,14 @@ export class AuthService {
       throw new BadRequestException('Email déjà utilisé');
     }
 
-    // vérifier identifiant (c’est ce que l’app Android utilise pour login)
-    const identifiantInUse = await this.utilisateurModel.findOne({ identifiant });
-    if (identifiantInUse) {
-      throw new BadRequestException('Identifiant déjà utilisé');
+    // vérifier identifiant
+    if (identifiant) {
+      const identifiantInUse = await this.utilisateurModel.findOne({
+        identifiant,
+      });
+      if (identifiantInUse) {
+        throw new BadRequestException('Identifiant déjà utilisé');
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -56,7 +67,7 @@ export class AuthService {
       email,
       password: hashedPassword,
       age: 0,
-      studentId: studentId ?? '', // vide pour parent
+      classGroup: classGroup ?? null, // 👈 on le stocke
       role: role ?? Role.User,
     });
 
@@ -72,7 +83,7 @@ export class AuthService {
     // chercher par identifiant OU email OU matricule
     const utilisateur = await this.utilisateurModel.findOne({
       $or: [
-        { identifiant }, // nouveau champ
+        { identifiant },
         { email: identifiant },
         { studentId: identifiant },
       ],
@@ -94,10 +105,36 @@ export class AuthService {
     const tokens = await this.generateUserTokens(userId, utilisateur.role);
     return {
       ...tokens,
-      userId,
-      role: utilisateur.role,
-      email: utilisateur.email,
+      user: {
+        id: userId,
+        firstName: utilisateur.firstName,
+        lastName: utilisateur.lastName,
+        email: utilisateur.email,
+        role: utilisateur.role,
+        studentId: utilisateur.studentId,
+        classGroup: utilisateur.classGroup ?? null,
+      },
       message: 'Connexion réussie',
+    };
+  }
+
+  // ----------------------------
+  // 🆕 /auth/me
+  // ----------------------------
+  async me(userId: string) {
+    const user = await this.utilisateurModel.findById(userId).lean();
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable');
+    }
+
+    return {
+      id: user._id.toString(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      studentId: user.studentId,
+      classGroup: user.classGroup ?? null,
     };
   }
 
@@ -112,12 +149,9 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // ----------------------------
-  // 💾 SAUVEGARDE DU REFRESH TOKEN
-  // ----------------------------
   async storeRefreshToken(token: string, userId: string) {
     const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 3); // expire dans 3 jours
+    expiryDate.setDate(expiryDate.getDate() + 3);
 
     await this.refreshTokenModel.updateOne(
       { userId },
@@ -126,9 +160,6 @@ export class AuthService {
     );
   }
 
-  // ----------------------------
-  // ♻️ REFRESH TOKENS
-  // ----------------------------
   async refreshTokens(refreshToken: string) {
     const token = await this.refreshTokenModel.findOne({
       token: refreshToken,
@@ -147,14 +178,7 @@ export class AuthService {
     return this.generateUserTokens(String(token.userId), user.role);
   }
 
-  // ----------------------------
-  // 🔑 CHANGE PASSWORD
-  // ----------------------------
-  async changePassword(
-    userId: string,
-    oldPassword: string,
-    newPassword: string,
-  ) {
+  async changePassword(userId: string, oldPassword: string, newPassword: string) {
     const utilisateur = await this.utilisateurModel.findById(userId);
     if (!utilisateur) {
       throw new UnauthorizedException('Utilisateur non trouvé');
