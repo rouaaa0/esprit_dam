@@ -7,6 +7,7 @@ import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { LoggerMiddleware } from './common/middlewear/logger.middleware';
 import { AuthModule } from './auth/auth.module';
 import { ClubsModule } from './clubs/clubs.module';
+import { DocumentRequestModule } from './document-request/document-request.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ClubsModule } from './clubs/clubs.module';
     UtilisateursModule,
     AuthModule,
     ClubsModule,
+    DocumentRequestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

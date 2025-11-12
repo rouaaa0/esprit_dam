@@ -8,6 +8,8 @@ import { jwtConstants } from './constants';
 import { Utilisateur, UtilisateurSchema } from 'src/utilisateurs/schemas/utilisateur.schema';
 import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { RolesGuard } from './guards/roles.guard';
+import { ClubsModule } from 'src/clubs/clubs.module';
 
 @Module({
   imports: [
@@ -21,9 +23,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       { name: Utilisateur.name, schema: UtilisateurSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
     ]),
+    ClubsModule, // Importé pour que RolesGuard puisse utiliser ClubsService
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, PassportModule, JwtModule],
+  providers: [AuthService, JwtStrategy, RolesGuard],
+  exports: [AuthService, PassportModule, JwtModule, RolesGuard],
 })
 export class AuthModule {}
