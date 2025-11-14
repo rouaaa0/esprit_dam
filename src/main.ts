@@ -4,6 +4,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as os from 'os';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 // 🔎 récupère automatiquement l'adresse IPv4 locale (Wi-Fi)
 function getLocalIp(): string {
@@ -23,7 +25,8 @@ function getLocalIp(): string {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // 👇 important: NestExpressApplication pour servir des fichiers statiques
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // ✅ Autoriser les requêtes depuis le front (utile pour React, Angular, Flutter ou Android)
   app.enableCors({
@@ -32,8 +35,14 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ Préfixe global pour toutes les routes
+  // ✅ Préfixe global pour toutes les routes API
   app.setGlobalPrefix('api');
+
+  // ✅ Exposer le dossier /uploads (images clubs, events, etc.)
+  //    ex: http://192.168.1.105:3000/uploads/clubs/xxxx.jpg
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+  });
 
   // ✅ Validation automatique des DTOs
   app.useGlobalPipes(
