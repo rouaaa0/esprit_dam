@@ -8,12 +8,19 @@ import {
   Delete,
   Put,
   NotFoundException,
+  BadRequestException,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,6 +28,8 @@ import { Role } from '../auth/enums/role.enum';
 
 import { InternshipOfferService } from './internship-offer.service';
 import { InternshipOffer } from './schemas/internship-offer.schema';
+import { CreateInternshipOfferDto } from './dto/create-internship-offer.dto';
+import { UpdateInternshipOfferDto } from './dto/update-internship-offer.dto';
 
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -31,14 +40,11 @@ import { extname } from 'path';
 @ApiTags('Internship Offers')
 @Controller('internship-offers')
 export class InternshipOfferController {
-  constructor(private readonly internshipService: InternshipOfferService) {}
-@Post()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.Admin)
-@ApiOperation({ summary: 'Créer une nouvelle offre de stage (admin uniquement)' })
-async create(@Body() dto: CreateInternshipOfferDto): Promise<InternshipOffer> {
-  return this.internshipService.create(dto as InternshipOffer);
-}
+  constructor(
+    private readonly internshipService: InternshipOfferService,
+  ) {}
+
+  // ============ LISTE & DÉTAILS ============
 
   @Get()
   @UseGuards(AuthGuard('jwt'))
@@ -52,11 +58,13 @@ async create(@Body() dto: CreateInternshipOfferDto): Promise<InternshipOffer> {
   @ApiOperation({ summary: 'Récupérer une offre par id' })
   async findOne(@Param('id') id: string): Promise<InternshipOffer> {
     const offer = await this.internshipService.findOne(id.trim());
-    if (!offer) throw new NotFoundException('Offre non trouvée');
+    if (!offer) {
+      throw new NotFoundException('Offre non trouvée');
+    }
     return offer;
   }
 
-  // ============ CRÉATION (admin) ============
+  // ============ CRÉATION (admin, avec logo optionnel) ============
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -113,22 +121,30 @@ async create(@Body() dto: CreateInternshipOfferDto): Promise<InternshipOffer> {
     }),
   )
   async create(
-    @Req() req,
+    @Req() req: any,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<InternshipOffer> {
-    const dto: any = req.body; // champs du form-data
+    const dto = req.body as any as CreateInternshipOfferDto;
 
     console.log('🧾 DTO REÇU =>', dto);
     console.log('📎 FICHIER =>', file?.originalname);
 
-    // Nettoyage & conversion
-    if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
-    if (dto.duration) dto.duration = Number(dto.duration);
-    if (dto.salary) dto.salary = Number(dto.salary);
+    // Gestion du logo
+    if (file) {
+      (dto as any).logoUrl = `/uploads/logos/${file.filename}`;
+    }
+
+    // Conversion des champs numériques (car multipart -> string)
+    if ((dto as any).duration !== undefined) {
+      (dto as any).duration = Number((dto as any).duration);
+    }
+    if ((dto as any).salary !== undefined) {
+      (dto as any).salary = Number((dto as any).salary);
+    }
 
     // Validation minimale
     if (!dto.title || !dto.company || !dto.description) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         'Champs obligatoires manquants (title, company, description)',
       );
     }
@@ -138,57 +154,22 @@ async create(@Body() dto: CreateInternshipOfferDto): Promise<InternshipOffer> {
 
   // ============ MISE A JOUR PAR ID (admin) ============
 
-  // ============ CRÉATION (admin) ============
-  @Post()
+  @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Créer une nouvelle offre de stage (admin)' })
-  @UseInterceptors(
-    FileInterceptor('logo', {
-      storage: diskStorage({
-        destination: './uploads/logos',
-        filename: (req, file, cb) => {
-          const unique = uuid();
-          cb(null, unique + extname(file.originalname));
-        },
-      }),
-    }),
-  )
-  async create(
-    @Req() req,
-    @UploadedFile() file?: Express.Multer.File,
+  @ApiOperation({ summary: 'Modifier une offre existante (admin uniquement)' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateInternshipOfferDto,
   ): Promise<InternshipOffer> {
-    const dto: any = req.body; // ✅ lit les champs du body, même en multipart
-    console.log('🧾 DTO REÇU =>', dto);
-    console.log('📎 FICHIER =>', file?.originalname);
-
-    // ✅ Nettoyage et conversion
-    if (file) dto.logoUrl = `/uploads/logos/${file.filename}`;
-    if (dto.duration) dto.duration = Number(dto.duration);
-    if (dto.salary) dto.salary = Number(dto.salary);
-
-    // ✅ Validation minimale
-    if (!dto.title || !dto.company || !dto.description) {
-      throw new NotFoundException('Champs obligatoires manquants (title, company, description)');
+    const updated = await this.internshipService.update(id.trim(), dto);
+    if (!updated) {
+      throw new NotFoundException('Offre non trouvée');
     }
-
-    return this.internshipService.create(dto);
+    return updated;
   }
 
-  // ============ MISE A JOUR PAR ID (admin) ============
-  @Put(':id')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.Admin)
-@ApiOperation({ summary: 'Modifier une offre existante (admin uniquement)' })
-async update(
-  @Param('id') id: string,
-  @Body() dto: UpdateInternshipOfferDto,
-): Promise<InternshipOffer> {
-  const updated = await this.internshipService.update(id, dto);
-  if (!updated) throw new NotFoundException('Offre non trouvée');
-  return updated;
-}
-
+  // ============ SUPPRESSION (admin) ============
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -196,7 +177,9 @@ async update(
   @ApiOperation({ summary: 'Supprimer une offre (admin)' })
   async delete(@Param('id') id: string): Promise<{ message: string }> {
     const deleted = await this.internshipService.delete(id.trim());
-    if (!deleted) throw new NotFoundException('Offre non trouvée');
+    if (!deleted) {
+      throw new NotFoundException('Offre non trouvée');
+    }
     return { message: 'Offre supprimée avec succès' };
   }
 }

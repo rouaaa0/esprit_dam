@@ -1,9 +1,12 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as os from 'os';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 // 🔎 récupère automatiquement l'adresse IPv4 locale (Wi-Fi)
 function getLocalIp(): string {
@@ -21,7 +24,8 @@ function getLocalIp(): string {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // 👇 On tape l'app en NestExpressApplication pour avoir useStaticAssets typé
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // ✅ CORS
   app.enableCors({
@@ -33,9 +37,10 @@ async function bootstrap() {
   // ✅ Préfixe global pour toutes les routes
   app.setGlobalPrefix('api');
 
-  // ✅ Exposer le dossier /uploads (images clubs, events, etc.)
-  //    ex: http://192.168.1.105:3000/uploads/clubs/xxxx.jpg
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  // ✅ servir les fichiers uploadés (logos, images, etc.)
+  // -> un fichier ./uploads/logos/xxx.png sera dispo sur :
+  //    http://IP:3000/uploads/logos/xxx.png
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads',
   });
 
@@ -50,13 +55,6 @@ async function bootstrap() {
 
   // ✅ Filtres globaux
   app.useGlobalFilters(new AllExceptionsFilter());
-
-  // ✅ servir les fichiers uploadés (logos, etc.)
-  // -> un logo sauvegardé dans ./uploads/logos/xxx.png sera dispo sur
-  // http://IP:3000/uploads/logos/xxx.png
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
 
   // ✅ Swagger
   const config = new DocumentBuilder()
